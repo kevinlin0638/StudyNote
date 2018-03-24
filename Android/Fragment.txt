@@ -1,0 +1,13 @@
+# Fragment 使用時發生的錯誤
+
+## Replace Fragment時發生內容物重疊的情形
+在主要XML 裡面要設定一個 空的 Container(最好是FragmentLayout) ! 
+不然Replace之後的東西會直接蓋上去不會將最初的Fragment刪除。
+
+## OnFragmentInteractionListener 造成程式崩潰
+因為MainActivity沒有implement各個Fragment裡面的OnFragmentInteractionListener函式
+
+## 小錯誤-為什麼沒有執行Frament轉換
+忘記 mFragmentManager 最後面要加 commit()
+
+
