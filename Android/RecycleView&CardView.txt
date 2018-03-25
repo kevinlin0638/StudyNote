@@ -1,0 +1,138 @@
+# RecycleView&CardView 使用時的歷程
+
+## 第一步 找到你需要放RecycleView的地方
+
+以我的例子 我需要將我的 RecycleView 加入我的Fragment中
+
+```
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.creight.mdhu.fragments.HomeFragment">
+
+    <android.support.v7.widget.RecyclerView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/recycleView">
+
+    </android.support.v7.widget.RecyclerView>
+</FrameLayout>
+```
+
+## 第二步 新建一個介面布局檔 layout_item 
+你的 CardView 的布局使用這個來佈局
+範例: 一個圖檔 + 一個文字
+```
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v7.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:layout_margin="10dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical">
+        <ImageView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/imgView"
+            android:layout_margin="10dp"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/txt"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp"/>
+    </LinearLayout>
+
+</android.support.v7.widget.CardView>
+```
+
+## 第三步 RecycleView 會需要用到 Adapter類別，新建一個Adpter，並且 implement 所有需要的函式
+詳細請看 註解
+```
+public class ItemAdapter extends RecyclerView.Adapter<ItemAdapter.ViewHolder> {
+
+    //新增一個字串List
+    private List<String> mListString;
+
+    //建構式
+    public ItemAdapter(List<String> listString) {
+        mListString = listString;
+    }
+
+    //新建一個 ViewHolder
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.recycle_view_item, parent, false);
+
+        ViewHolder vh = new ViewHolder(v);
+        return vh;
+    }
+
+    //綁定 ViewHolder
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        holder.mImgView.setImageResource(android.R.drawable.star_on);
+        holder.mTxt.setText(mListString.get(position));
+    }
+
+    //獲得 item 個數
+    @Override
+    public int getItemCount() {
+        return mListString.size();
+    }
+
+    //新增一個子類別 ViewHolder
+    public class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener{
+        public ImageView mImgView;
+        public TextView mTxt;
+
+        //定義 CardView裡面的原件
+        public ViewHolder(View itemView) {
+            super(itemView);
+            mImgView = (ImageView) itemView.findViewById(R.id.imgView);
+            mTxt = (TextView) itemView.findViewById(R.id.txt);
+
+            itemView.setOnClickListener(this);
+        }
+
+        //設定點選後動作
+        @Override
+        public void onClick(View view) {
+            Toast.makeText(view.getContext(), mListString.get(getAdapterPosition()), Toast.LENGTH_LONG).show();
+        }
+    }
+}
+```
+
+## 第四步 編輯主程式檔案
+
+由於我是要顯示在Fragment中，所以找到我要的Fragment.java，並在 onCreateView 這個函式中建構Cards。
+
+```
+	@Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
+        // Inflate the layout for this fragment
+        View view = inflater.inflate(R.layout.fragment_home, container, false);
+        //設定CardView 字串
+        List<String> liststr = new ArrayList<>();
+        for(int i = 0; i < 20;i++)
+            liststr.add("我愛張詠琪 " + String.valueOf(i));
+
+        RecyclerView rv = (RecyclerView) view.findViewById(R.id.recycleView);
+
+        //決定RecycleView的排列方式
+        rv.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        ItemAdapter itemAdapter = new ItemAdapter(liststr);
+        rv.setAdapter(itemAdapter);
+        return view;
+    }
+```
+
+# 遇到的一些小問題
+1. 原本以為最後一步是要寫在MainActivity.java裡面，這樣會導致找不到Fragment裡面的RecycleView而使程式崩潰。
+2. 如果使用Fragment來建構 RecycleView 做為模板的 FragmentLayout 不須有 RecycleView，直接寫在你要的 FragmentLayout 裡面即可。
