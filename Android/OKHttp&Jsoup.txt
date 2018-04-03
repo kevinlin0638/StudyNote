@@ -1,0 +1,123 @@
+# 使用 OKHttp&Jsoup
+
+## 使用OKHttp來做Get和Post
+
+參考: http://xxs4129.pixnet.net/blog/post/165417214-android%E4%BD%BF%E7%94%A8jsoup%E6%8A%93%E5%8F%96%E7%B6%B2%E9%A0%81%E8%B3%87%E6%96%99
+
+```
+Request request = new Request.Builder()
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
+                .url("http://www.ndhu.edu.tw/bin/home.php")
+                .build();
+
+        okHttpClient.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                e.printStackTrace();
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                System.out.print(response.body().string());
+            }
+        });
+```
+
+因為後來實作使用Jsoup所以就沒多用了!因為Jsoup除了可以Get 與 Post之外 還可以更快速地分析網頁。
+
+# 使用 Jsoup時遇到的困難
+
+## java.io.IOException: Mark has been invalidated
+
+```
+compile 'org.jsoup:jsoup:1.10.3'
+```
+
+## 使用網路通訊時
+1. 要請求權限
+```
+<uses-permission android:name="android.permission.INTERNET" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+```
+2. 要使用 WorkerThread 來實作 網路請求
+
+```
+final ExecutorService service = Executors.newSingleThreadExecutor();
+        service.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //設定CardView 字串
+                    List<String> liststr = new ArrayList<>();
+                    Document doc = Jsoup.connect("http://www.ndhu.edu.tw/bin/showmodule.php?O=1000&F=/0/1000/modules/asso_cg_mstr/45/asso_cg_mstr-1112.htm.zh-tw&Mo=19258&Type=asso_cg_mstr&Nbr=1112&Seq=1112&Cg=cmb&TagName=sm_div_ab2dec57e3afa1e49ff31fe3bb11e7505_0_Dyn_2_3&DivId=sm_div_ab2dec57e3afa1e49ff31fe3bb11e7505_0_Dyn_2_3")
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
+                            .data("rs", "sajaxSubmit")
+                            .data("rsargs[]", "<Input><F><K></K><V></V></F></Input>")
+                            .post();
+                    Elements elements = doc.select("Content");
+                    doc = Jsoup.parse(elements.text());
+                    elements = doc.select("span.ptname >a");
+                    for(Element el : elements){
+                        liststr.add(el.attr("title"));
+                        Log.i("Home", el.attr("title"));
+                    }
+                    Fragment fm =  (Fragment) HomeFragment.newInstance(liststr);
+
+                    mFragmentManager.beginTransaction().replace(R.id.flContent, fm).commit();
+                } catch (IOException e) {
+                    Log.e("Error", e.toString());
+                }
+            }
+        });
+```
+
+## 為何要在MainActivity.java 做請求，不要在 Fragment.java做請求
+
+因為如果在 Fragment.java 裡面的 onCreateView 做請求，你新建出來的 WorkerThread 還沒把工作完成，你的 View 就已經回傳了，
+這樣會導致明明你有對UI做更動，但卻沒有實際作用。
+
+因此 先在 MainActivity.java 做網路請求
+```
+final ExecutorService service = Executors.newSingleThreadExecutor();
+        service.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    //設定CardView 字串
+                    List<String> liststr = new ArrayList<>();
+                    Document doc = Jsoup.connect("http://www.ndhu.edu.tw/bin/showmodule.php?O=1000&F=/0/1000/modules/asso_cg_mstr/45/asso_cg_mstr-1112.htm.zh-tw&Mo=19258&Type=asso_cg_mstr&Nbr=1112&Seq=1112&Cg=cmb&TagName=sm_div_ab2dec57e3afa1e49ff31fe3bb11e7505_0_Dyn_2_3&DivId=sm_div_ab2dec57e3afa1e49ff31fe3bb11e7505_0_Dyn_2_3")
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36")
+                            .data("rs", "sajaxSubmit")
+                            .data("rsargs[]", "<Input><F><K></K><V></V></F></Input>")
+                            .post();
+                    Elements elements = doc.select("Content");
+                    doc = Jsoup.parse(elements.text());
+                    elements = doc.select("span.ptname >a");
+                    for(Element el : elements){
+                        liststr.add(el.attr("title"));
+                        Log.i("Home", el.attr("title"));
+                    }
+                    Fragment fm =  (Fragment) HomeFragment.newInstance(liststr);
+
+                    mFragmentManager.beginTransaction().replace(R.id.flContent, fm).commit();
+                } catch (IOException e) {
+                    Log.e("Error", e.toString());
+                }
+            }
+        });
+```
+
+然後在 Fragment 裡面 獲取在MainActivity.java獲得的參數
+```
+public static HomeFragment newInstance(List<String> strs) {
+        HomeFragment fragment = new HomeFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_PARAM1, "");
+        args.putString(ARG_PARAM2, "");
+		
+		//外部獲得的參數
+        liststr = strs;
+        fragment.setArguments(args);
+        return fragment;
+    }
+```
